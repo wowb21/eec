@@ -1,17 +1,19 @@
 # eec介绍
 
+[![Build Status][travis-image]][travis] [![Release][release-image]][releases] [![License][license-image]][license]
+
 eec（Excel Export Core）是一个Excel读取和写入工具，目前支持xlsx格式的
 读取、写入以及xls格式的读取(xls支持版本BIFF8也就是excel 97~2003格式)。
 
 与传统Excel操作不同之处在于eec并不缓存数据到内存，相反会边读数据边写文件,
 省去了将数据拉取到内存的操作也降低了OOM的可能。目前已实现worksheet类型有
-- [ListSheet](./src/main/java/cn/ttzero/excel/entity/ListSheet.java) // 对象数组
-- [ListMapSheet](./src/main/java/cn/ttzero/excel/entity/ListMapSheet.java) // Map数组
-- [StatementSheet](./src/main/java/cn/ttzero/excel/entity/StatementSheet.java) // PreparedStatement
-- [ResultSetSheet](./src/main/java/cn/ttzero/excel/entity/ResultSetSheet.java) // ResultSet支持(多用于存储过程)
-- [EmptySheet](./src/main/java/cn/ttzero/excel/entity/EmptySheet.java) // 空worksheet
+- [ListSheet](./src/main/java/org/ttzero/excel/entity/ListSheet.java) // 对象数组
+- [ListMapSheet](./src/main/java/org/ttzero/excel/entity/ListMapSheet.java) // Map数组
+- [StatementSheet](./src/main/java/org/ttzero/excel/entity/StatementSheet.java) // PreparedStatement
+- [ResultSetSheet](./src/main/java/org/ttzero/excel/entity/ResultSetSheet.java) // ResultSet支持(多用于存储过程)
+- [EmptySheet](./src/main/java/org/ttzero/excel/entity/EmptySheet.java) // 空worksheet
 
-也可以继承已知worksheet来实现自定义数据源，比如微服务，mybatis或者其它RPC
+也可以继承已知[Worksheet](./src/main/java/org/ttzero/excel/entity/Sheet.java)来实现自定义数据源，比如微服务，mybatis或者其它RPC
 
 eec并不是一个功能全面的excel操作工具类，它功能有限并不能用它来完全替代Apache POI
 ，它最擅长的操作是表格处理。比如将数据库表导出为excel文档或者读取excel表格内容到
@@ -36,19 +38,11 @@ stream或数据库。
 
 ## 使用方法
 
-导入eec.jar即可使用
-
-```
-git clone https://www.github.com/wangguanquan/eec.git
-mvn source:jar install
-```
-
 pom.xml添加
-
 
 ```
 <dependency>
-    <groupId>cn.ttzero</groupId>
+    <groupId>org.ttzero</groupId>
     <artifactId>eec</artifactId>
     <version>${eec.version}</version>
 </dependency>
@@ -58,7 +52,7 @@ eec内部仅依赖dom4j.1.6.1和log4j.2.11.1,以及net.sf.sevenzipjbinding.9.20-
 
 ```
 <dependency>
-    <groupId>cn.ttzero</groupId>
+    <groupId>org.ttzero</groupId>
     <artifactId>eec</artifactId>
     <version>{eec.version}</version>
     <exclusions>
@@ -86,12 +80,35 @@ xls格式的读取与xlsx对外暴露完全一样，ExcelReader内部判断文�
 
 示例请查找`testReadXLS()`方法。
 
+## CSV格式支持
+
+ExcelWriter支持csv格式，只需要在`writeTo`方法前添加`saveAsCSV()`即可。[测试代码参考](./src/test/java/org/ttzero/excel/entity/csv)
 Download
 - [eec-0.3.1-7z.jar](./beta/eec-0.3.1-7z.jar)
 - [eec-0.3.1-7z-sources.jar](./beta/eec-0.3.1-7z-sources.jar)
 - [eec-e3-support-0.3.1.jar](./beta/eec-e3-support-0.3.1.jar)
 
-*注意：eec-e3-support依赖于eec不能独立存在*
+#### CSV与Excel格式互转
+
+- CSV => Excel 向Workbook中添加一个`CSVSheet`即可
+- Excel => CSV 读Excel后通过Worksheet调用`saveAsCSV`
+
+代码示例
+
+```
+// CSV转Excel
+new Workbook("csv path test", author)
+    .addSheet(new CSVSheet(csvPath)) // 添加CSVSheet并指定csv路径
+    .writeTo(getOutputTestPath());
+    
+// Excel转CSV
+try (ExcelReader reader = ExcelReader.read(testResourceRoot().resolve("1.xlsx"))) {
+    // 读取Excel并保存为CSV格式
+    reader.sheet(0).saveAsCSV(getOutputTestPath());
+} catch (IOException e) {
+    e.printStackTrace();
+}
+```
 
 ## 示例
 
@@ -101,20 +118,22 @@ Download
 清空先前文件避免找不到测试结果文件
 
 #### 1. 对象数组导出
-对象数组导出时可以在对象上使用注解`@DisplayName("column name")`来设置excel头部信息，
-使用注解`@NotExport`标记不需要导出的字段。
+
+#### 1.1 准备工作
+对象数组导出时可以在对象上使用注解`@ExcelColumn("column name")`来设置excel头部信息，
+使用注解`@IgnoreExport`标记不需要导出的字段。
 
 ```
     @NotExport("敏感信息不导出")
     private int id; // not export
 
-    @DisplayName("渠道ID")
+    @ExcelColumn("渠道ID")
     private int channelId;
 
-    @DisplayName(share = false)
+    @ExcelColumn(share = false)
     private String account;
 
-    @DisplayName("注册时间")
+    @ExcelColumn("注册时间")
     private Timestamp registered;
 ```
 
@@ -215,7 +234,7 @@ public void testCustomizeDataSource(Parameter params) throws IOException {
 }
 
 ```
-更详细的信息请查测试类`ListObjectPagingTest.testPagingCustomizeDataSource`
+更详细的信息请查测试类[CustomizeDataSourceSheet](./src/test/java/org/ttzero/excel/entity/CustomizeDataSourceSheet.java)
 
 #### 4. 数据源为数据库
 数据源为数据库时可以直接传入`java.sql.Connection`和SQL语句，取数据的过程在EEC内部实现，
@@ -332,6 +351,8 @@ Excel如下图
 Excel读取使用`ExcelReader#read`静态方法，内部采用流式操作，当使用某一行数据时才会真正
 读入内存，所以即使是GB级别的excel文件也只占用少量内存。
 
+默认的ExcelReader仅读取单元格的值而忽略单元格的公式，可以使用`ExcelReader#parseFormula`方法使Reader解析单元格的公式。
+
 下面展示一些常规的读取方法
 
 #### 1. 使用iterator迭代每行数据
@@ -390,7 +411,7 @@ public void readToList() {
 #### 4. 当然既然是stream那么就可以使用流的全部功能，比如加一些过滤和聚合等。
 
 ```
-reade.sheets()
+reader.sheets()
     .flatMap(Sheet::dataRows)
     .map(row -> row.to(Regist.class))
     .filter(e -> "iOS".equals(e.platform()))
@@ -398,6 +419,26 @@ reade.sheets()
 ```
 
 以上代码相当于`select * from 用户注册 where platform = 'iOS'`
+
+
+#### 4.1 根据列名过滤列
+
+```
+@Test public void testFilter() {
+    try (ExcelReader reader = ExcelReader.read(testResourceRoot().resolve("1.xlsx"))) {
+        String[] games = reader.sheet(0)
+            .dataRows()
+            .map(row -> row.getString("游戏"))
+            .distinct()
+            .toArray(String[]::new);
+        print(Arrays.toString(games));
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+```
+
+以上方法获取excel文件的"游戏"列的不重复值
 
 #### 5. xls读取
 xls读取对方法式与xlsx完全一致
@@ -412,33 +453,63 @@ public void testReadXLS() {
 }
 ```
 
+#### 6. 读取单元格公式
+
+```
+@Test public void testFormula() {
+    try (ExcelReader reader = ExcelReader.read(testResourceRoot().resolve("formula.xlsx"))) {
+        if (reader.hasFormula()) {
+        
+            // Call `parseFormula` to parse formula
+            reader.parseFormula().sheets().flatMap(sheet -> {
+                println("----------------" + sheet.getName() + "----------------");
+                return sheet.dataRows();
+            }).forEach(row -> {
+                for (int i = row.fc; i < row.lc; i++) {
+                    if (row.hasFormula(i)) {
+                        print(int2Col(i + 1));
+                        print(row.getRowNumber());
+                        print("=");
+                        print(row.getFormula(i)); // Getting formula string
+                        println();
+                    }
+                }
+            });
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+```
 
 ## CHANGELOG
-Version 0.3.1 (2019-05-21)
+Version 0.4.0 (2020-02-24)
 -------------
-1. SharedStringTable升级
-2. 模板导出更新以兼容Excel97~03
-3. 修改SQL别名导出表头文字错误的BUG
-4. AutoSize方法升级，现在AutoSize并不需要借助临时文件
-5. 当BloomFilter满时不扩容而进行清空
+1. Worksheet增加`getDimension`方法返回单元格范围，替换原`getSize`方法
+2. 支持获取单元格公式
+3. 修复SNAPSHOT版导出excel文件无法正常打开的错误
+4. ExcelReader增加打开模式，可以指定读取单元格公式或者`合并单元格`的值。
 
-Version 0.3.0 (2019-05-01)
+Version 0.3.6 (2019-11-21)
 -------------
-1. 写入Excel进行重构以提升扩展能力，现在支持自定义数据源worksheet
-2. 对Excel 97~03写入兼容支持，eec-e3-support还在开发当中
-3. 支持自定义WorkbookWriter或WorksheetWriter以满足个性化需求，
-      比如修改每个worksheet最大行数
-4. 修复一些已知BUG
-5. SharedStringTable引入Google BloomFilter
+1. Hotfix读取空单元格下可能抛NPE异常
+
+Version 0.3.5 (2019-11-20)
+-------------
+1. 修复读取空单元格时抛数组越界异常
+
+Version 0.3.4 (2019-10-21)
+-------------
+1. 支持CSV <=> Excel 格式互转
+2. 支持通过列名(非空列第一行)获取数据
 
 [更多...](./CHANGELOG)
 
-## TODO LIST
+[travis]: https://travis-ci.org/wangguanquan/eec
+[travis-image]: https://travis-ci.org/wangguanquan/eec.png?branch=master
 
-1. excel文件增加导出scripts功能
-2. list data with template
-3. 对excel文件设置密码 (AES-128 encrypted)
-4. 多线程支持，多个sheet数据同时写
-5. 自动列宽要考虑字体样式实现
-6. wiki for eec
-7. 读取colspan/rowspan单元格
+[releases]: https://github.com/wangguanquan/eec/releases
+[release-image]: http://img.shields.io/badge/release-0.4.0-blue.svg?style=flat
+
+[license]: http://www.apache.org/licenses/LICENSE-2.0
+[license-image]: http://img.shields.io/badge/license-Apache--2-blue.svg?style=flat
