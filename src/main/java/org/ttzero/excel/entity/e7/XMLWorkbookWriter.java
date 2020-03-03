@@ -38,10 +38,10 @@ import org.ttzero.excel.manager.Const;
 import org.ttzero.excel.manager.RelManager;
 import org.ttzero.excel.manager.docProps.App;
 import org.ttzero.excel.manager.docProps.Core;
-import org.ttzero.excel.reader.ExcelReadException;
 import org.ttzero.excel.util.FileUtil;
 import org.ttzero.excel.util.StringUtil;
 import org.ttzero.excel.util.ZipUtil;
+import org.ttzero.excel.util._7ZipUtil;
 
 import java.awt.Color;
 import java.io.File;

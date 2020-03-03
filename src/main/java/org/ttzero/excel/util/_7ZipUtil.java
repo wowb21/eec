@@ -1,4 +1,4 @@
-package cn.ttzero.excel.util;
+package org.ttzero.excel.util;
 
 import net.sf.sevenzipjbinding.*;
 import net.sf.sevenzipjbinding.impl.OutItemFactory;
@@ -15,7 +15,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import static cn.ttzero.excel.util.ZipUtil.list;
+import static org.ttzero.excel.util.ZipUtil.list;
 
 /**
  * 7z util. using JNI
