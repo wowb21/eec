@@ -16,8 +16,8 @@
 
 package org.ttzero.excel.reader;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ttzero.excel.entity.style.Styles;
 
 import java.io.BufferedReader;
@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
  * @author guanquan.wang on 2018-09-22
  */
 class XMLSheet implements Sheet {
-    Logger logger = LogManager.getLogger(getClass());
+    final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
     XMLSheet() { }
 
@@ -236,7 +236,7 @@ class XMLSheet implements Sheet {
      */
     @Override
     public XMLSheet load() throws IOException {
-        logger.debug("load {}", path.toString());
+        LOGGER.debug("load {}", path.toString());
         reader = Files.newBufferedReader(path);
         cb = new char[8192];
         nChar = 0;
@@ -250,7 +250,7 @@ class XMLSheet implements Sheet {
                 int index = line.indexOf(size), end = index > 0 ? line.indexOf('"', index += size.length()) : -1;
                 if (end > 0) {
                     String l_ = line.substring(index, end);
-                    logger.debug("Dimension-Range: {}", l_);
+                    LOGGER.debug("Dimension-Range: {}", l_);
                     Pattern pat = Pattern.compile("([A-Z]+)(\\d+):([A-Z]+)(\\d+)");
                     Matcher mat = pat.matcher(l_);
                     if (mat.matches()) {
@@ -337,7 +337,7 @@ class XMLSheet implements Sheet {
                     eof = true;
                     reader.close(); // close reader
                     reader = null; // wait GC
-                    logger.debug("end of file.");
+                    LOGGER.debug("end of file.");
                     return null;
                 }
             } catch (IOException e) {
@@ -371,7 +371,7 @@ class XMLSheet implements Sheet {
                 }
             }
         } catch (IOException e) {
-            logger.error("Read header row error.");
+            LOGGER.error("Read header row error.");
             return null;
         }
         boolean eof = cb[nChar] == '>';
@@ -490,15 +490,15 @@ class XMLSheet implements Sheet {
             int block = (int) Math.min(1 << 11, fileSize);
             ByteBuffer buffer = ByteBuffer.allocate(block);
             byte[] left = null;
-            int left_size = 0, i = 0;
+            int left_size = 0, i;
 
-            CharBuffer charBuffer = null;
-            boolean eof = false;
-            for (; !eof;) {
+            CharBuffer charBuffer;
+            boolean eof;
+            for (; ;) {
                 channel.position(fileSize - block + left_size);
                 channel.read(buffer);
-                fileSize -= buffer.limit();
                 eof = buffer.limit() < block;
+                fileSize -= buffer.limit();
                 if (left_size > 0) {
                     buffer.limit(block);
                     buffer.put(left, 0, left_size);
@@ -531,6 +531,7 @@ class XMLSheet implements Sheet {
                 }
                 // Not Found
                 if (i < c) {
+                    if (eof || (eof = fileSize <= 0)) break;
                     for (; i < limit && charBuffer.get(i) != '>'; i++) ;
                     i++;
                     if (i < limit - 1) {
@@ -545,7 +546,7 @@ class XMLSheet implements Sheet {
                         left_size = last_size;
                     }
                 }
-                // Found the last row
+                // Found the last row or empty worksheet
                 else {
                     break;
                 }
@@ -566,7 +567,7 @@ class XMLSheet implements Sheet {
             parseMerge(channel, charBuffer, buffer, block);
         } catch (IOException e) {
             // Ignore error
-            logger.debug("", e);
+            LOGGER.debug("", e);
         }
     }
 
@@ -822,10 +823,10 @@ class XMLMergeSheet extends XMLSheet implements MergeSheet {
             Grid grid = GridFactory.create(new Dimension(fr, fc, lr, lc), n);
             for (Dimension d : mergeCells) {
                 grid.mark(d);
-                logger.debug("merged cells range {}", d);
+                LOGGER.debug("merged cells range {}", d);
             }
 
-            logger.debug("Grid: {}", grid);
+            LOGGER.debug("Grid: {}", grid);
             this.mergeCells = grid;
         }
     }

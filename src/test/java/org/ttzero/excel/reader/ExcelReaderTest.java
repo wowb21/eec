@@ -16,10 +16,12 @@
 
 package org.ttzero.excel.reader;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.ttzero.excel.Print;
 import org.ttzero.excel.annotation.ExcelColumn;
 import org.ttzero.excel.annotation.IgnoreExport;
+import org.ttzero.excel.entity.WorkbookTest;
 import org.ttzero.excel.manager.ExcelType;
 import org.ttzero.excel.util.DateUtil;
 import org.ttzero.excel.util.FileUtil;
@@ -41,6 +43,7 @@ import static org.ttzero.excel.entity.WorkbookTest.getOutputTestPath;
 import static org.ttzero.excel.reader.ExcelReader.COPY_ON_MERGED;
 import static org.ttzero.excel.reader.ExcelReader.VALUE_AND_CALC;
 import static org.ttzero.excel.reader.ExcelReader.cellRangeToLong;
+import static org.ttzero.excel.util.StringUtil.isNotEmpty;
 import static org.ttzero.excel.util.StringUtil.swap;
 
 /**
@@ -418,6 +421,34 @@ public class ExcelReaderTest {
         }
     }
 
+    // Issue #99
+    @Test public void testInnerString() {
+        try (ExcelReader reader = ExcelReader.read(testResourceRoot().resolve("inner string.xlsx"))) {
+            long n = reader.sheets().flatMap(Sheet::rows).filter(row -> isNotEmpty(row.getString(0))).count();
+            assert n == 11;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Ignore
+    @Test public void testReaderLarge() {
+        try (ExcelReader reader = ExcelReader.read(WorkbookTest.getOutputTestPath().resolve("large07.xlsx"))) {
+            long n = reader.sheets().flatMap(Sheet::dataRows).map(row -> row.too(LargeData.class)).count();
+            assert n == 500000;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test public void testReadAllType() {
+        try (ExcelReader reader = ExcelReader.read(testResourceRoot().resolve("all type.xlsx"))) {
+            reader.sheets().flatMap(Sheet::rows).forEach(Print::println);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static class Customer {
         @ExcelColumn("客户编码")
         private String code;
@@ -632,106 +663,31 @@ public class ExcelReaderTest {
     }
 
     public static class LargeData {
-        @ExcelColumn(share = false)
         private String str1;
-
-        @ExcelColumn(share = false)
         private String str2;
-
-        @ExcelColumn(share = false)
         private String str3;
-
-        @ExcelColumn(share = false)
         private String str4;
-
-        @ExcelColumn(share = false)
         private String str5;
-
-        @ExcelColumn(share = false)
         private String str6;
-
-        @ExcelColumn(share = false)
         private String str7;
-
-        @ExcelColumn(share = false)
         private String str8;
-
-        @ExcelColumn(share = false)
         private String str9;
-
-        @ExcelColumn(share = false)
         private String str10;
-
-        @ExcelColumn(share = false)
         private String str11;
-
-        @ExcelColumn(share = false)
         private String str12;
-
-        @ExcelColumn(share = false)
         private String str13;
-
-        @ExcelColumn(share = false)
         private String str14;
-
-        @ExcelColumn(share = false)
         private String str15;
-
-        @ExcelColumn(share = false)
         private String str16;
-
-        @ExcelColumn(share = false)
         private String str17;
-
-        @ExcelColumn(share = false)
         private String str18;
-
-        @ExcelColumn(share = false)
         private String str19;
-
-        @ExcelColumn(share = false)
         private String str20;
-
-        @ExcelColumn(share = false)
         private String str21;
-
-        @ExcelColumn(share = false)
         private String str22;
-
-        @ExcelColumn(share = false)
         private String str23;
-
-        @ExcelColumn(share = false)
         private String str24;
-
-        @ExcelColumn(share = false)
         private String str25;
-
-//        private String str1;
-//        private String str2;
-//        private String str3;
-//        private String str4;
-//        private String str5;
-//        private String str6;
-//        private String str7;
-//        private String str8;
-//        private String str9;
-//        private String str10;
-//        private String str11;
-//        private String str12;
-//        private String str13;
-//        private String str14;
-//        private String str15;
-//        private String str16;
-//        private String str17;
-//        private String str18;
-//        private String str19;
-//        private String str20;
-//        private String str21;
-//        private String str22;
-//        private String str23;
-//        private String str24;
-//        private String str25;
 
         public String getStr1() {
             return str1;

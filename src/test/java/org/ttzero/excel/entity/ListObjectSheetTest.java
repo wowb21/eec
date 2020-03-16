@@ -434,7 +434,7 @@ public class ListObjectSheetTest extends WorkbookTest{
 
             @Override
             public List<ExcelReaderTest.LargeData> more() {
-                if (n++ >= 1000) return null;
+                if (n++ >= 10) return null;
                 List<ExcelReaderTest.LargeData> list = new ArrayList<>();
                 int size = i + 5000;
                 for (; i < size; i++) {
@@ -470,7 +470,6 @@ public class ListObjectSheetTest extends WorkbookTest{
             }
         }).writeTo(defaultTestPath);
     }
-
 
     public static class Item {
         private int id;

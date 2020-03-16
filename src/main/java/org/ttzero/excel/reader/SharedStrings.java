@@ -16,16 +16,15 @@
 
 package org.ttzero.excel.reader;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ttzero.excel.entity.ExcelWriteException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Arrays;
 
 import static org.ttzero.excel.util.StringUtil.EMPTY;
 
@@ -47,7 +46,7 @@ import static org.ttzero.excel.util.StringUtil.EMPTY;
  * @author guanquan.wang at 2018-09-27 14:28
  */
 public class SharedStrings implements AutoCloseable {
-    private Logger logger = LogManager.getLogger(getClass());
+    private final Logger LOGGER = LoggerFactory.getLogger(getClass());
     private Path sstPath;
 
     /**
@@ -126,9 +125,9 @@ public class SharedStrings implements AutoCloseable {
      */
     private int limit_backward;
     /**
-     * Count the number of visits to each segment
+     * A tester of SharedString's cache
      */
-    private Map<Integer, Integer> count_area = null;
+    private Tester tester = null;
     /**
      * High frequency word
      */
@@ -156,7 +155,7 @@ public class SharedStrings implements AutoCloseable {
 
     private IndexSharedStringTable sst;
     // For debug
-    private int total, total_forward, total_backward, total_hot;
+    private int total, total_forward, total_backward, total_hot, total_sst;
 
     /**
      * @return the shared string unique count
@@ -176,16 +175,14 @@ public class SharedStrings implements AutoCloseable {
         if (Files.exists(sstPath)) {
             // Get unique count
             max = uniqueCount();
-            logger.debug("Size of SharedString: {}", max);
+            LOGGER.debug("Size of SharedString: {}", max);
             // Unknown size or big than page
-            int default_cap = 10;
             if (max < 0 || max > page) {
                 forward = new String[page];
                 backward = new String[page];
 
-                if (max > 0 && max / page + 1 > default_cap)
-                    default_cap = max / page + 1;
-                count_area = new HashMap<>(default_cap);
+                // Cache 8KB binary, it will store 1^16 strings.
+                tester = new Tester.FixBinaryTester(max > 1 << 16 ? 1 << 16 : max);
 
                 if (hotSize > 0) hot = FixSizeLRUCache.create(hotSize);
                 else hot = FixSizeLRUCache.create();
@@ -260,7 +257,6 @@ public class SharedStrings implements AutoCloseable {
             if (vt < 0) vt = 0;
 
             loadXml();
-            test(index);
         }
 
         String value;
@@ -268,6 +264,7 @@ public class SharedStrings implements AutoCloseable {
         if (forwardRange(index)) {
             value = forward[index - offset_forward];
             total_forward++;
+            if (test(index)) hot.put(index, value);
             return value;
         }
 
@@ -275,6 +272,7 @@ public class SharedStrings implements AutoCloseable {
         if (backwardRange(index)) {
             value = backward[index - offset_backward];
             total_backward++;
+            if (test(index)) hot.put(index, value);
             return value;
         }
 
@@ -296,18 +294,16 @@ public class SharedStrings implements AutoCloseable {
                 } catch (IOException e) {
                     throw new ExcelWriteException(e);
                 }
+                total_sst++;
             } else {
                 loadXml();
+                total_forward++;
             }
             if (forward[0] == null) {
                 throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + max);
             }
             value = forward[index - offset_forward];
-            if (test(index)) {
-                logger.debug("put hot {}", index);
-                hot.put(index, value);
-            }
-            total_forward++;
+            if (test(index)) hot.put(index, value);
         } else {
             total_hot++;
         }
@@ -336,11 +332,7 @@ public class SharedStrings implements AutoCloseable {
 
     // Check the current index has been loaded twice
     private boolean test(int index) {
-        if (max < page) return false;
-        int idx = index / page;
-        int n = count_area.getOrDefault(idx, 0) + 1;
-        count_area.put(idx, n);
-        return n > 1;
+        return tester != null && tester.test(index);
     }
 
     /**
@@ -368,7 +360,7 @@ public class SharedStrings implements AutoCloseable {
     private int readData() throws IOException {
         // Read forward area data
         int n = 0, length, nChar;
-        while ((length = reader.read(cb, offset, cb.length - offset)) > 0 || offset > 0) {
+        for (; (length = reader.read(cb, offset, cb.length - offset)) > 0 || offset > 0; ) {
             length += offset;
             nChar = offset &= 0;
             int len0 = length - 3, len1 = len0 - 1;
@@ -450,7 +442,7 @@ public class SharedStrings implements AutoCloseable {
             if (n == page) break;
         }
         // DEBUG the last character
-//        logger.info("---------{}---------", new String(cb, nChar, length - nChar));
+//        LOGGER.info("---------{}---------", new String(cb, nChar, length - nChar));
         return new int[] { nChar, n };
     }
 
@@ -493,7 +485,7 @@ public class SharedStrings implements AutoCloseable {
                 int n = toInt(cb, idx_38 + 2, idx_59);
                 // byte range
 //                if (n < 0 || n > 127) {
-//                    logger.warn("Unknown escape [{}]", new String(cb, idx_38, idx_59 - idx_38 + 1));
+//                    LOGGER.warn("Unknown escape [{}]", new String(cb, idx_38, idx_59 - idx_38 + 1));
 //                }
                 // Unicode char
                 escapeBuf.append((char) n);
@@ -518,7 +510,7 @@ public class SharedStrings implements AutoCloseable {
                         escapeBuf.append(' ');
                         break;
                     default: // Unknown escape
-//                        logger.warn("Unknown escape [&{}]", name);
+//                        LOGGER.warn("Unknown escape [&{}]", name);
                         escapeBuf.append(cb, idx_38, idx_59 - idx_38 + 1);
                 }
             }
@@ -556,16 +548,15 @@ public class SharedStrings implements AutoCloseable {
     public void close() throws IOException {
         if (reader != null) {
             // Debug hit rate
-            logger.debug("total: {}, forward: {}, backward: {}, hot: {}"
-                , total, total_forward, total_backward, total_hot);
+            LOGGER.debug("total: {}, forward: {}, backward: {}, sst: {}, hot: {}"
+                , total, total_forward, total_backward, total_sst, total_hot);
             reader.close();
         }
         cb = null;
         forward = null;
         backward = null;
-        if (count_area != null) {
-            count_area.clear();
-            count_area = null;
+        if (tester != null) {
+            tester = null;
         }
         escapeBuf = null;
         if (sst != null) {
@@ -573,4 +564,85 @@ public class SharedStrings implements AutoCloseable {
         }
     }
 
+}
+
+interface Tester {
+
+    /**
+     * Test if a string needs to be cached
+     *
+     * @param i the string index in {@link IndexSharedStringTable}
+     * @return true if the string should be cached
+     */
+    boolean test(int i);
+
+    /**
+     * Returns the limit index of {@link Tester}
+     *
+     * @return limit index
+     */
+    int limit();
+
+    /**
+     * Returns the block size of {@link Tester}
+     *
+     * @return the mark array length
+     */
+    int size();
+
+    class FixBinaryTester implements Tester {
+        private int start, limit, initial_size;
+        private long[] marks;
+
+        FixBinaryTester(int expectedInsertions) {
+            marks = new long[initial_size = ((expectedInsertions - 1) >> 6) + 1];
+            limit = (initial_size << 6) - 1;
+        }
+
+        @Override
+        public boolean test(int i) {
+            if (i < start) return true;
+            // Check bound of bit-set
+            if (i > limit) resize(i);
+            i = i - start;
+            int n = i >> 6, m = i - (n << 6);
+            boolean a = ((marks[n] >> (63 - m)) & 1) == 1;
+            marks[n] |= 1L << (63 - m);
+            return a;
+        }
+
+        @Override
+        public int limit() {
+            return limit;
+        }
+
+        @Override
+        public int size() {
+            return marks.length;
+        }
+
+        private void resize(int i) {
+            int ii = 0, n = marks.length, l = ((i - start) >> 6) + 1;
+
+            for (; ii < n && marks[ii] == -1; ii++) ;
+
+            if (l - ii <= initial_size) {
+                // Clean old mark
+                if (ii > 0) {
+                    int j = 0;
+                    for (int m = ii; m < n; marks[j++] = marks[m++]) ;
+                    for (; j < n; marks[j++] &= 0) ;
+                    start += (ii << 6);
+                } else {
+                    marks = Arrays.copyOf(marks, l);
+                }
+            } else {
+                long[] newMarks = new long[l - ii];
+                System.arraycopy(marks, ii, newMarks, 0, marks.length - ii);
+                marks = newMarks;
+                start += (ii << 6);
+            }
+            limit = (marks.length << 6) + start - 1;
+        }
+    }
 }
