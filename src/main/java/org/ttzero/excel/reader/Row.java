@@ -19,6 +19,7 @@ package org.ttzero.excel.reader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ttzero.excel.entity.style.Styles;
+import org.ttzero.excel.enums.ErrorCodeEnum;
 import org.ttzero.excel.util.StringUtil;
 
 import java.lang.reflect.InvocationTargetException;
@@ -38,6 +39,7 @@ import static org.ttzero.excel.reader.Cell.DATE;
 import static org.ttzero.excel.reader.Cell.DATETIME;
 import static org.ttzero.excel.reader.Cell.DOUBLE;
 import static org.ttzero.excel.reader.Cell.EMPTY_TAG;
+import static org.ttzero.excel.reader.Cell.ERROR;
 import static org.ttzero.excel.reader.Cell.INLINESTR;
 import static org.ttzero.excel.reader.Cell.LONG;
 import static org.ttzero.excel.reader.Cell.NUMERIC;
@@ -1013,7 +1015,7 @@ public abstract class Row {
      * Check cell has formula
      *
      * @param columnIndex the cell index
-     * @return the formula string if exists, otherwise return null
+     * @return true if the cell has formula, otherwise false
      */
     public boolean hasFormula(int columnIndex) {
         return getCell(columnIndex).f;
@@ -1023,10 +1025,53 @@ public abstract class Row {
      * Check cell has formula
      *
      * @param columnName the cell name
-     * @return the formula string if exists, otherwise return null
+     * @return true if the cell has formula, otherwise false
      */
     public boolean hasFormula(String columnName) {
         return getCell(columnName).f;
+    }
+
+
+    /**
+     * Returns the calculation of a formula results in an error
+     *
+     * @param columnIndex the cell index
+     * @return {@link ErrorCodeEnum} if exists, otherwise return null
+     */
+    public ErrorCodeEnum getErrorEnum(int columnIndex) {
+        Cell c = getCell(columnIndex);
+        return c.hasError() ? c.error : null;
+    }
+
+    /**
+     * Returns the calculation of a formula results in an error
+     *
+     * @param columnName the cell name
+     * @return {@link ErrorCodeEnum} if exists, otherwise return null
+     */
+    public ErrorCodeEnum getErrorEnum(String columnName) {
+        Cell c = getCell(columnName);
+        return c.hasError() ? c.error : null;
+    }
+
+    /**
+     * Check cell formula results is an error formula
+     *
+     * @param columnIndex the cell index
+     * @return true if formula error, otherwise return false
+     */
+    public boolean hasError(int columnIndex) {
+        return getCell(columnIndex).hasError();
+    }
+
+    /**
+     * Check cell formula results is an error formula
+     *
+     * @param columnName the cell name
+     * @return true if formula error, otherwise return false
+     */
+    public boolean hasError(String columnName) {
+        return getCell(columnName).hasError();
     }
 
     /**
@@ -1224,6 +1269,8 @@ public abstract class Row {
                 case EMPTY_TAG:
                     joiner.add(EMPTY);
                     break;
+                case ERROR:
+                    joiner.add(c.error.getDesc());
                 default:
                     joiner.add(null);
             }
