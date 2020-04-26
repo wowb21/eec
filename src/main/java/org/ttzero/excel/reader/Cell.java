@@ -16,8 +16,6 @@
 
 package org.ttzero.excel.reader;
 
-import org.ttzero.excel.enums.ErrorCodeEnum;
-
 import java.math.BigDecimal;
 
 /**
@@ -40,8 +38,6 @@ public class Cell {
     public static final char DATE        = 'a';
     public static final char TIME        = 't';
     public static final char EMPTY_TAG   = 'e';
-    public static final char ERROR       = 0xFFFF;
-
     /**
      * Value type
      * n=numeric
@@ -97,10 +93,6 @@ public class Cell {
      * Has formula
      */
     public boolean f;
-    /**
-     * Error value
-     */
-    public ErrorCodeEnum error;
     /**
      * y-axis of cell in row
      */
@@ -164,15 +156,6 @@ public class Cell {
         this.dv = t;
     }
 
-    public void setError(ErrorCodeEnum error) {
-        this.t = ERROR;
-        this.error = error;
-    }
-
-    public boolean hasError() {
-        return this.t == ERROR;
-    }
-
     public void clear() {
         this.t  = '\0';
         this.sv = null;
@@ -186,7 +169,6 @@ public class Cell {
         this.fv = null;
         this.f  = false;
         this.si = -1;
-        this.error = null;
     }
 
     public Cell from(Cell cell) {
@@ -202,7 +184,6 @@ public class Cell {
         this.fv = cell.fv;
         this.f  = cell.f;
         this.si = cell.si;
-        this.error = cell.error;
 
         return this;
     }
