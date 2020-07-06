@@ -234,13 +234,9 @@ public class XMLWorkbookWriter implements IWorkbookWriter {
         }
         app.setTitlePards(titleParts);
 
-        try {
-            app.writeTo(root.getParent() + "/docProps/app.xml");
-            contentType.add(new ContentType.Override(Const.ContentType.APP, "/docProps/app.xml"));
-            contentType.addRel(new Relationship("docProps/app.xml", Const.Relationship.APP));
-        } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            throw new ExcelWriteException(e);
-        }
+        app.writeTo(root.getParent().resolve("docProps/app.xml"));
+        contentType.add(new ContentType.Override(Const.ContentType.APP, "/docProps/app.xml"));
+        contentType.addRel(new Relationship("docProps/app.xml", Const.Relationship.APP));
     }
 
     private void writeCore(Path root, ContentType contentType) throws IOException {
@@ -255,13 +251,9 @@ public class XMLWorkbookWriter implements IWorkbookWriter {
 
         core.setModified(new Date());
 
-        try {
-            core.writeTo(root.getParent() + "/docProps/core.xml");
-            contentType.add(new ContentType.Override(Const.ContentType.CORE, "/docProps/core.xml"));
-            contentType.addRel(new Relationship("docProps/core.xml", Const.Relationship.CORE));
-        } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            throw new ExcelWriteException(e);
-        }
+        core.writeTo(root.getParent().resolve("docProps/core.xml"));
+        contentType.add(new ContentType.Override(Const.ContentType.CORE, "/docProps/core.xml"));
+        contentType.addRel(new Relationship("docProps/core.xml", Const.Relationship.CORE));
     }
 
     private void madeMark(Path parent) throws IOException {
