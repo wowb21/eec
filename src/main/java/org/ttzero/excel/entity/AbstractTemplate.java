@@ -42,7 +42,7 @@ import static org.ttzero.excel.util.FileUtil.exists;
  * @author guanquan.wang at 2018-02-26 13:45
  */
 public abstract class AbstractTemplate {
-    static final String inlineStr = "inlineStr";
+    private static final String inlineStr = "inlineStr";
     protected Workbook wb;
 
     protected Path zipPath;

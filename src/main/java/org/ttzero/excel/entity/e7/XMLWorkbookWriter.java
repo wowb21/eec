@@ -448,6 +448,13 @@ public class XMLWorkbookWriter implements IWorkbookWriter {
         workbook.what("0006", resultPath.toString());
     }
 
+
+    // --- Customize worksheet writer
+
+    protected IWorksheetWriter getWorksheetWriter(Sheet sheet) {
+        return new XMLWorksheetWriter(sheet);
+    }
+
     // --- TEMPLATE
 
     @Override
@@ -479,9 +486,4 @@ public class XMLWorkbookWriter implements IWorkbookWriter {
         return zipFile;
     }
 
-    // --- Customize worksheet writer
-
-    protected IWorksheetWriter getWorksheetWriter(Sheet sheet) {
-        return new XMLWorksheetWriter(sheet);
-    }
 }

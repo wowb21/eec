@@ -898,46 +898,6 @@ public class Workbook implements Storable {
         workbookWriter.writeTo(file);
     }
 
-    /////////////////////////////////Template///////////////////////////////////
-    private InputStream is;
-    private Object o;
-
-    /**
-     * Returns the template io-stream
-     *
-     * @return the io-stream of template
-     */
-    public InputStream getTemplate() {
-        return is;
-    }
-
-    /**
-     * Returns the replacement object
-     *
-     * @return the object
-     */
-    public Object getBind() {
-        return o;
-    }
-
-    /**
-     * Bind a excel template and set an object to replace the
-     * placeholder character in template
-     *
-     * @param is the template io-stream
-     * @param o  bind a replacement object
-     * @return the {@link Workbook}
-     */
-    public Workbook withTemplate(InputStream is, Object o) {
-        this.is = is;
-        this.o = o;
-        return this;
-    }
-
-    protected Path template() throws IOException {
-        return workbookWriter.template();
-    }
-
     /**
      * Setting a customize workbook writer
      *
@@ -974,4 +934,60 @@ public class Workbook implements Storable {
             workbookWriter = new XMLWorkbookWriter(this);
         }
     }
+
+    /////////////////////////////////Template///////////////////////////////////
+    private InputStream is;
+    private Object o;
+
+    /**
+     * Returns the template io-stream
+     *
+     * @return the io-stream of template
+     */
+    public InputStream getTemplate() {
+        return is;
+    }
+
+    /**
+     * Returns the replacement object
+     *
+     * @return the object
+     */
+    public Object getBind() {
+        return o;
+    }
+
+    /**
+     * Bind a excel template and set an object to replace the
+     * placeholder character in template
+     *
+     * @param is the template io-stream
+     * @param o  bind a replacement object
+     * @return the {@link Workbook}
+     */
+    public Workbook withTemplate(InputStream is, Object o) {
+        this.is = is;
+        this.o = o;
+        return this;
+    }
+
+    /**
+     * Bind a excel template
+     *
+     * @param is the template io-stream
+     * @return the {@link Workbook}
+     */
+    public Workbook withTemplate(InputStream is) {
+        this.is = is;
+        return this;
+    }
+
+    /**
+     * @deprecated remove
+     */
+    @Deprecated
+    protected Path template() throws IOException {
+        return workbookWriter.template();
+    }
+
 }
